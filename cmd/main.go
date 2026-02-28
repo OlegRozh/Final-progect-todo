@@ -1,12 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"net/http"
 	"os"
 
-	"github.com/OlegRozh/Final-progect-todo/internal/api"
+	"github.com/OlegRozh/Final-progect-todo/internal/server"
 	"github.com/OlegRozh/Final-progect-todo/internal/storage"
 	"github.com/joho/godotenv"
 )
@@ -22,21 +20,19 @@ func main() {
 		log.Println("Port must be set, using default 8080")
 		port = "8080"
 	}
-	url := fmt.Sprintf(":%s", port)
+	dbPath := os.Getenv("TODO_DBFILE")
 
-	store, err := storage.New()
+	store, err := storage.New(dbPath)
 	if err != nil {
-		log.Fatal("Failed to init storage:", err)
+		log.Fatal("Failed to create storage:", err)
 	}
-	api.Store = store
+	defer store.DB.Close()
 
-	fileServer := http.FileServer(http.Dir("web"))
-	http.Handle("/", fileServer)
+	srv := server.New(store, port)
+	srv.SetupRoutes()
 
-	log.Printf("Listening on %s", url)
-	err = http.ListenAndServe(url, nil)
-	if err != nil {
-		panic(err)
+	if err := srv.Start(); err != nil {
+		log.Fatal("Server failed:", err)
 	}
 
 }

@@ -2,12 +2,12 @@ package storage
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"os"
 
 	"github.com/OlegRozh/Final-progect-todo/structs"
-	"github.com/joho/godotenv"
 	_ "modernc.org/sqlite"
 )
 
@@ -25,20 +25,15 @@ CREATE TABLE IF NOT EXISTS scheduler (
 );
 `
 
-func New() (*SQLiteStorage, error) {
-	err := godotenv.Load(".env")
-	if err != nil {
-		log.Println("Error loading .env file")
-	}
-	dbFile := os.Getenv("TODO_DBFILE")
-	_, err = os.Stat(dbFile)
+func New(dbPath string) (*SQLiteStorage, error) {
+	_, err := os.Stat(dbPath)
 	var install bool
 	if os.IsNotExist(err) {
 		install = true
 	}
-	db, err := sql.Open("sqlite", dbFile)
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	if install {
 		_, err = db.Exec(schema)
@@ -61,7 +56,7 @@ func (s *SQLiteStorage) GetTask(id string) (*structs.Task, error) {
 		&task.Repeat,
 	)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("task with id %s not found", id)
 		}
 		return nil, err

@@ -3,38 +3,26 @@ package api
 import (
 	"encoding/json"
 	"net/http"
-	"time"
 
 	"github.com/OlegRozh/Final-progect-todo/internal/service"
 	"github.com/OlegRozh/Final-progect-todo/internal/storage"
 	"github.com/OlegRozh/Final-progect-todo/structs"
 )
 
-var Store *storage.SQLiteStorage
-
-type TasksResp struct {
-	Tasks []structs.Task `json:"tasks"`
-}
-
-func init() {
-	http.HandleFunc("/api/nextdate", NextDate)
-	http.HandleFunc("/api/task", MainHandler)
-	http.HandleFunc("/api/tasks", GetListTasks)
-	http.HandleFunc("/api/task/done", StatusDoneHandler)
-}
-
-func MainHandler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		GetTask(w, r)
-	case http.MethodPost:
-		CreateTask(w, r)
-	case http.MethodPut:
-		UpdateTask(w, r)
-	case http.MethodDelete:
-		DeleteTask(w, r)
-	default:
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+func TaskHandler(store storage.TaskStorage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			GetTask(w, r, store)
+		case http.MethodPost:
+			CreateTask(w, r, store)
+		case http.MethodPut:
+			UpdateTask(w, r, store)
+		case http.MethodDelete:
+			DeleteTask(w, r, store)
+		default:
+			writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		}
 	}
 }
 
@@ -46,13 +34,13 @@ func writeJSON(w http.ResponseWriter, status int, data any) {
 	}
 }
 
-func GetTask(w http.ResponseWriter, r *http.Request) {
+func GetTask(w http.ResponseWriter, r *http.Request, store storage.TaskStorage) {
 	id := r.URL.Query().Get("id")
 	if id == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "id is required"})
 		return
 	}
-	task, err := Store.GetTask(id)
+	task, err := store.GetTask(id)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -60,23 +48,7 @@ func GetTask(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, task)
 }
 
-func GetListTasks(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
-		return
-	}
-	tasks, err := Store.GetListTasks(50)
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
-		return
-	}
-	if tasks == nil {
-		tasks = []structs.Task{}
-	}
-	writeJSON(w, http.StatusOK, TasksResp{Tasks: tasks})
-}
-
-func CreateTask(w http.ResponseWriter, r *http.Request) {
+func CreateTask(w http.ResponseWriter, r *http.Request, store storage.TaskStorage) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 		return
@@ -106,7 +78,7 @@ func CreateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := Store.CreateTask(task.Date, task.Title, task.Comment, task.Repeat)
+	id, err := store.CreateTask(task.Date, task.Title, task.Comment, task.Repeat)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -116,7 +88,7 @@ func CreateTask(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, response)
 }
 
-func UpdateTask(w http.ResponseWriter, r *http.Request) {
+func UpdateTask(w http.ResponseWriter, r *http.Request, store storage.TaskStorage) {
 	if r.Method != http.MethodPut {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 		return
@@ -140,46 +112,14 @@ func UpdateTask(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
-	if err := Store.UpdateTask(&task); err != nil {
+	if err := store.UpdateTask(&task); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"message": "task updated"})
 }
 
-func StatusDoneHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
-		return
-	}
-	id := r.URL.Query().Get("id")
-	if id == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "id is required"})
-		return
-	}
-	task, err := Store.GetTask(id)
-	if err != nil {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "Task not found"})
-		return
-	}
-	shouldDelete, err := service.StatusDone(task, time.Now())
-	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
-		return
-	}
-	if shouldDelete {
-		err = Store.DeleteTask(id)
-	} else {
-		err = Store.UpdateTask(task)
-	}
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]string{})
-}
-
-func DeleteTask(w http.ResponseWriter, r *http.Request) {
+func DeleteTask(w http.ResponseWriter, r *http.Request, store storage.TaskStorage) {
 	if r.Method != http.MethodDelete {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 		return
@@ -189,7 +129,7 @@ func DeleteTask(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "id is required"})
 		return
 	}
-	if err := Store.DeleteTask(id); err != nil {
+	if err := store.DeleteTask(id); err != nil {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "Task not found"})
 		return
 	}

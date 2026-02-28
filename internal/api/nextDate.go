@@ -27,7 +27,7 @@ func (r *NextDateRequest) ParseFromRequest(req *http.Request) error {
 	return nil
 }
 
-func NextDate(w http.ResponseWriter, r *http.Request) {
+func NextDateHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		http.Error(w, "Method not supported", http.StatusMethodNotAllowed)
 		return
