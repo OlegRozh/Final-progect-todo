@@ -7,6 +7,8 @@ import (
 	"github.com/OlegRozh/Final-progect-todo/structs"
 )
 
+const tasksLimit = 50
+
 type TasksResp struct {
 	Tasks []structs.Task `json:"tasks"`
 }
@@ -17,16 +19,16 @@ func GetListTasks(store storage.TaskStorage) http.HandlerFunc {
 			writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 			return
 		}
-		tasks, err := store.GetListTasks(50)
+		tasks, err := store.GetListTasks(tasksLimit)
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 			return
 		}
 		if tasks == nil {
-			tasks = []structs.Task{}
+			tasks = []*structs.Task{}
 		}
 		response := struct {
-			Tasks []structs.Task `json:"tasks"`
+			Tasks []*structs.Task `json:"tasks"`
 		}{Tasks: tasks}
 		writeJSON(w, http.StatusOK, response)
 	}

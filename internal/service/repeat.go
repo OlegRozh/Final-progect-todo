@@ -9,6 +9,8 @@ import (
 	"github.com/OlegRozh/Final-progect-todo/structs"
 )
 
+const dateLayout = "20060102"
+
 func afterNow(date, now time.Time) bool {
 	dateUTC := date.UTC().Truncate(24 * time.Hour)
 	nowUTC := now.UTC().Truncate(24 * time.Hour)
@@ -19,7 +21,7 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 	if repeat == "" {
 		return "", errors.New("repeat can't be empty")
 	}
-	date, err := time.Parse("20060102", dstart)
+	date, err := time.Parse(dateLayout, dstart)
 	if err != nil {
 		return "", err
 	}
@@ -56,16 +58,16 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 	default:
 		return "", errors.New("invalid rule")
 	}
-	return date.UTC().Format("20060102"), nil
+	return date.UTC().Format(dateLayout), nil
 }
 
 func CheckDate(task *structs.Task) error {
 	now := time.Now()
 	if task.Date == "" {
-		task.Date = now.Format("20060102")
+		task.Date = now.Format(dateLayout)
 		return nil
 	}
-	t, err := time.Parse("20060102", task.Date)
+	t, err := time.Parse(dateLayout, task.Date)
 	if err != nil {
 		return err
 	}
@@ -78,7 +80,7 @@ func CheckDate(task *structs.Task) error {
 	}
 	if afterNow(now, t) {
 		if task.Repeat == "" {
-			task.Date = now.Format("20060102")
+			task.Date = now.Format(dateLayout)
 		} else {
 			task.Date = next
 		}

@@ -49,12 +49,6 @@ func GetTask(w http.ResponseWriter, r *http.Request, store storage.TaskStorage) 
 }
 
 func CreateTask(w http.ResponseWriter, r *http.Request, store storage.TaskStorage) {
-	if r.Method != http.MethodPost {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
-		return
-	}
-	defer r.Body.Close()
-
 	var req structs.CreateTaskRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON: " + err.Error()})
@@ -89,11 +83,6 @@ func CreateTask(w http.ResponseWriter, r *http.Request, store storage.TaskStorag
 }
 
 func UpdateTask(w http.ResponseWriter, r *http.Request, store storage.TaskStorage) {
-	if r.Method != http.MethodPut {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
-		return
-	}
-	defer r.Body.Close()
 
 	var task structs.Task
 	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
@@ -120,10 +109,6 @@ func UpdateTask(w http.ResponseWriter, r *http.Request, store storage.TaskStorag
 }
 
 func DeleteTask(w http.ResponseWriter, r *http.Request, store storage.TaskStorage) {
-	if r.Method != http.MethodDelete {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
-		return
-	}
 	id := r.URL.Query().Get("id")
 	if id == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "id is required"})

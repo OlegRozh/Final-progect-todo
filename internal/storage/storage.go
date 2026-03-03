@@ -64,21 +64,24 @@ func (s *SQLiteStorage) GetTask(id string) (*structs.Task, error) {
 	return &task, nil
 }
 
-func (s *SQLiteStorage) GetListTasks(limit int) ([]structs.Task, error) {
+func (s *SQLiteStorage) GetListTasks(limit int) ([]*structs.Task, error) {
 	query := `SELECT id, date, title, comment, repeat FROM scheduler ORDER BY date LIMIT ?`
 	rows, err := s.DB.Query(query, limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var tasks []structs.Task
+	var tasks []*structs.Task
 	for rows.Next() {
 		var task structs.Task
 		err := rows.Scan(&task.Id, &task.Date, &task.Title, &task.Comment, &task.Repeat)
 		if err != nil {
 			return nil, err
 		}
-		tasks = append(tasks, task)
+		tasks = append(tasks, &task)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return tasks, nil
 }
